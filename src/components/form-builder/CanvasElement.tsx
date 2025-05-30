@@ -1,8 +1,7 @@
 
 "use client";
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import type { XYCoord } from 'dnd-core';
-import { useDrag, useDrop } from 'react-dnd';
+import { useDrag } from 'react-dnd'; // Removed useDrop and XYCoord as reordering logic changes
 import type { FormElement, TableFormElement as TableFormElementType } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,88 +16,79 @@ import { ItemTypes } from './DraggableItem';
 
 interface CanvasElementProps {
   element: FormElement;
-  index: number;
+  // index prop might be less relevant if not used for reordering, but kept if needed by drag item
   isSelected: boolean;
   onSelect: () => void;
-  moveElement: (dragIndex: number, hoverIndex: number) => void;
+  // moveElement prop is removed as positioning is now x/y based
 }
 
 interface DragItem {
-  index: number;
   id: string;
   type: string;
+  originalX: number;
+  originalY: number;
 }
 
 const MIN_WIDTH = 100; // Minimum width in pixels for an element
 
-export default function CanvasElement({ element, index, isSelected, onSelect, moveElement }: CanvasElementProps) {
+export default function CanvasElement({ element, isSelected, onSelect }: CanvasElementProps) {
   const { removeElement, setSelectedElement, updateElement } = useFormBuilder();
-  const ref = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null); // Ref for the card, used for resize logic
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
   const [isResizing, setIsResizing] = useState(false);
   const [initialWidth, setInitialWidth] = useState(0);
   const [initialMouseX, setInitialMouseX] = useState(0);
 
-
-  const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: any }>({
-    accept: ItemTypes.FORM_ELEMENT,
-    collect(monitor) {
-      return {
-        handlerId: monitor.getHandlerId(),
-      };
-    },
-    hover(item: DragItem, monitor) {
-      if (!ref.current) {
-        return;
-      }
-      if (item.index === undefined) return;
-
-      const dragIndex = item.index;
-      const hoverIndex = index;
-
-      if (dragIndex === hoverIndex) {
-        return;
-      }
-
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const clientOffset = monitor.getClientOffset();
-      if(!clientOffset || !hoverBoundingRect) return;
-
-      const hoverClientY = (clientOffset as XYCoord).y - hoverBoundingRect.top;
-      const hoverMiddleY = hoverBoundingRect.height / 2;
-
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
-      
-      moveElement(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
-
+  // Drag hook for moving the element on the canvas
   const [{ isDragging }, drag, preview] = useDrag({
     type: ItemTypes.FORM_ELEMENT,
-    item: () => ({ id: element.id, index, type: ItemTypes.FORM_ELEMENT }),
-    collect: (monitor: any) => ({
+    item: (): DragItem => ({
+      id: element.id,
+      type: ItemTypes.FORM_ELEMENT,
+      originalX: element.x || 0,
+      originalY: element.y || 0,
+    }),
+    collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
+    end: (item, monitor) => {
+      const didDrop = monitor.didDrop();
+      // Ensure it was dropped on a valid target (e.g., the canvas)
+      // and not just released mid-air without a target.
+      // If getDropResult is not specific, any successful drop will trigger update.
+      if (!didDrop && !monitor.getDropResult()) { 
+        // If not dropped on a valid target, could revert or do nothing (stays at last known valid position)
+        return;
+      }
+      
+      const delta = monitor.getDifferenceFromInitialOffset();
+      if (delta) {
+        const newX = Math.round(item.originalX + delta.x);
+        const newY = Math.round(item.originalY + delta.y);
+        // Ensure position is not negative, or within canvas bounds if desired
+        updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
+      }
+    },
   });
 
-  drag(drop(ref)); // Apply drag to the grip handle later, drop to the card
+  // Attach preview to the entire element div, drag to the grip handle
+  // preview(cardRef) is not correct. preview applies to the top-level draggable node.
+  // drag should be applied to the grip.
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
-    const currentWidth = ref.current?.offsetWidth || parseInt(element.width || '280', 10);
+    const currentWidth = cardRef.current?.offsetWidth || parseInt(element.width || '280', 10);
     setInitialWidth(currentWidth);
     setInitialMouseX(e.clientX);
-    setSelectedElement(element); // Ensure element is selected when resizing
+    setSelectedElement(element);
   }, [element, setSelectedElement]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !ref.current) return;
+      if (!isResizing || !cardRef.current) return;
       const dx = e.clientX - initialMouseX;
       let newWidth = initialWidth + dx;
       newWidth = Math.max(MIN_WIDTH, newWidth);
@@ -123,6 +113,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
 
 
   const renderElementPreview = () => {
+    // ... (preview rendering logic remains the same)
     switch (element.type) {
       case 'text':
       case 'number':
@@ -201,32 +192,30 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
     }
   };
   
-  // The element.width can be '280px' or other values.
-  // If it's a Tailwind class like max-w-xs, this direct style application might need adjustment
-  // or we ensure element.width is always a pixel/percentage value.
-  // For now, assuming element.width is a valid CSS width string (e.g., "300px").
   const elementStyle: React.CSSProperties = {
-    width: element.width || '280px', // Fallback width
+    width: element.width || '280px',
     opacity: isDragging ? 0.4 : 1,
     minWidth: `${MIN_WIDTH}px`,
-    position: 'relative', // For absolute positioning of resize handle
+    position: 'absolute', // Key change for positioning
+    left: `${element.x || 0}px`,
+    top: `${element.y || 0}px`,
+    zIndex: isDragging || isSelected ? 100 : 1, // Ensure dragged/selected elements are on top
   };
 
+  // The main div gets the preview ref and styles for positioning and dragging opacity.
   return (
-    <div ref={preview} style={elementStyle} data-handler-id={handlerId}>
+    <div ref={preview} style={elementStyle}>
       <Card
-        ref={ref}
+        ref={cardRef} // Ref for the card itself, for resize logic and other DOM measurements
         onClick={onSelect}
         className={`h-full cursor-pointer transition-all duration-150 ease-in-out shadow-md hover:shadow-lg relative group w-full
           ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border'}
-          ${isDragging ? 'border-dashed border-primary' : ''}
+          ${isDragging ? 'border-dashed border-primary !cursor-grabbing' : ''} 
         `}
       >
         <CardHeader className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between ">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div ref={drag} className="cursor-move p-1 -ml-1 text-muted-foreground hover:text-foreground flex-shrink-0" aria-label="Drag to reorder">
-              <GripVertical size={18} />
-            </div>
+          <div ref={drag} className="flex items-center gap-2 overflow-hidden cursor-move"> {/* Apply drag to this container including grip and title */}
+            <GripVertical size={18} className="text-muted-foreground hover:text-foreground flex-shrink-0" />
             <CardTitle className="text-base font-medium text-foreground truncate" title={element.label}>
               {element.label || `${element.type.charAt(0).toUpperCase() + element.type.slice(1)} Field`}
             </CardTitle>
@@ -260,4 +249,3 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
     </div>
   );
 }
-

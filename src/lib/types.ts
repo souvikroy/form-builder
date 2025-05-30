@@ -26,7 +26,9 @@ export interface BaseFormElement {
   defaultValue?: any;
   required?: boolean;
   helperText?: string;
-  width?: string; // Added width property
+  width?: string;
+  x?: number; // X coordinate on the canvas
+  y?: number; // Y coordinate on the canvas
 }
 
 export interface TextFormElement extends BaseFormElement {
@@ -100,6 +102,8 @@ export const createNewFormElement = (type: ElementType): FormElement => {
     label: `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
     required: false,
     width: defaultWidth,
+    x: 0, // Default X
+    y: 0, // Default Y
   };
 
   switch (type) {
