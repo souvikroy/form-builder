@@ -21,27 +21,32 @@ export default function Canvas() {
     () => ({
       accept: ItemTypes.FORM_ELEMENT,
       drop: (item: DropItem, monitor) => {
-        if (!monitor.isOver({ shallow: true })) {
+        if (!monitor.isOver({ shallow: true })) { // Ensure drop is directly on canvas, not child
             return;
         }
 
-        const clientOffset = monitor.getClientOffset();
+        const clientOffset = monitor.getClientOffset(); // Mouse position relative to viewport
 
+        // This handles dropping NEW elements from the sidebar onto the canvas
         if (!item.id && clientOffset && dropZoneRef.current) { 
-          const canvasRect = dropZoneRef.current.getBoundingClientRect();
+          const canvasRect = dropZoneRef.current.getBoundingClientRect(); // Canvas viewport position & size
           const scrollLeft = dropZoneRef.current.scrollLeft;
           const scrollTop = dropZoneRef.current.scrollTop;
 
+          // Calculate where to place the element within the scrollable canvas content
           let x = clientOffset.x - canvasRect.left + scrollLeft;
           let y = clientOffset.y - canvasRect.top + scrollTop;
           
+          // Ensure coordinates are non-negative and round them
           x = Math.max(0, Math.round(x));
           y = Math.max(0, Math.round(y));
           
           const newEl = addElement(item.type, { x, y });
           setSelectedElement(newEl);
         }
-        return { droppedOn: 'canvas' };
+        // If item.id exists, it means an existing CanvasElement is being dragged.
+        // Its position update is handled by its own useDrag's end() method in CanvasElement.tsx
+        return { droppedOn: 'canvas' }; // Signifies the drop target
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver({ shallow: true }),
@@ -51,7 +56,7 @@ export default function Canvas() {
     [addElement, setSelectedElement]
   );
 
-  dropCollect(dropZoneRef);
+  dropCollect(dropZoneRef); // Apply the drop target to the ref
 
   const handleSelectElement = (element: FormElementType) => {
     setSelectedElement(element);
@@ -65,7 +70,7 @@ export default function Canvas() {
           isOver && canDrop ? 'bg-primary/10' : 'bg-muted/20'
         } ${formDefinition.length === 0 ? 'flex flex-col items-center justify-center' : ''}`}
         style={{ 
-            position: 'relative', 
+            position: 'relative', // Crucial for absolute positioning of children
             minWidth: '2500px', 
             minHeight: '1800px', 
             padding: '32px', // Equivalent to p-8

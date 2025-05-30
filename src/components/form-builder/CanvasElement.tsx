@@ -40,10 +40,10 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: ItemTypes.FORM_ELEMENT,
-    item: (): DragItem => ({
+    item: (): DragItem => ({ // This is called when drag starts
       id: element.id,
       type: ItemTypes.FORM_ELEMENT, // Explicitly set item type
-      originalX: element.x || 0,
+      originalX: element.x || 0, // Store initial canvas coordinates
       originalY: element.y || 0,
     }),
     collect: (monitor) => ({
@@ -55,15 +55,15 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
       // The dropResult will contain { droppedOn: 'canvas' } if dropped on our main canvas.
       if (!didDrop || !monitor.getDropResult() || (monitor.getDropResult() as any)?.droppedOn !== 'canvas') {
         // If not dropped on our main canvas (e.g., dropped outside, or on an unhandled target)
-        // we might revert or just do nothing (element stays at its last known valid position before this invalid drop attempt)
-        // For now, we do nothing if not on 'canvas', meaning it will update based on offset even if dropped outside viewport.
-        // This could be refined if reverting to original position on invalid drop is desired.
+        // For now, we do nothing if not on 'canvas'. This means it will update its position
+        // based on the delta even if dropped outside the viewport, which is fine.
       }
       
-      const delta = monitor.getDifferenceFromInitialOffset();
+      const delta = monitor.getDifferenceFromInitialOffset(); // Delta in viewport coordinates
       if (delta) {
         const newX = Math.round(item.originalX + delta.x);
         const newY = Math.round(item.originalY + delta.y);
+        // Update element's x,y in the context, ensuring non-negative values
         updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
       }
     },
@@ -190,7 +190,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
     width: element.width || '280px', // Default width if not specified
     opacity: isDragging ? 0.4 : 1,
     minWidth: `${MIN_WIDTH}px`,
-    position: 'absolute',
+    position: 'absolute', // Crucial for free-form placement
     left: `${element.x || 0}px`,
     top: `${element.y || 0}px`,
     zIndex: isDragging || isSelected ? 100 : 1, // Ensure dragged/selected elements are on top
