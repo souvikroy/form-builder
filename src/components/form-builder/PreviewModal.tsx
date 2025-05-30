@@ -39,8 +39,7 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
       position: 'absolute',
       left: `${element.x || 0}px`,
       top: `${element.y || 0}px`,
-      width: element.width || '280px', // Default width if not specified
-      // minWidth: '150px', // Ensure elements don't become too small visually
+      width: element.width || '280px', 
     };
 
     return (
@@ -90,7 +89,7 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
               return (
                 <div className="flex items-center space-x-2 mt-2">
                   <Checkbox id={element.id} name={element.name} defaultChecked={!!element.defaultValue} required={element.required} />
-                  {/* The label for checkbox in preview should be the element's main label */}
+                  {/* The label for checkbox in preview is the element's main label as per typical form behavior */}
                   <Label htmlFor={element.id} className="font-normal">{element.label}</Label> 
                 </div>
               );
@@ -133,7 +132,7 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
                         <tr key={rIndex} className="border-b border-border">
                           {Array.from({ length: tableEl.cols }).map((_, cIndex) => (
                             <td key={cIndex} className={`border-border p-2 h-10 bg-input/20 text-center text-muted-foreground ${cIndex < tableEl.cols -1 ? 'border-r' : ''}`}>
-                              {/* Cell {rIndex + 1}-{cIndex + 1} */}
+                              {/* Cell placeholder, actual input fields could be added here if needed */}
                             </td>
                           ))}
                         </tr>
@@ -183,14 +182,13 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">Form Preview</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 -mx-6 px-6 py-4 bg-muted/10"> {/* Added bg for contrast */}
+        <ScrollArea className="flex-1 -mx-6 px-6 py-4 bg-muted/10"> 
           {formDefinition.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground text-center py-10">The form is empty. Add some elements to preview.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              {/* Relative container for absolutely positioned elements, mimicking canvas */}
               <div 
                 className="relative bg-background shadow-inner" 
                 style={{ 
@@ -201,7 +199,7 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
               >
                 {formDefinition.map(renderFormElement)}
               </div>
-              <div className="mt-8 pt-6 border-t border-border px-6 pb-6 sticky bottom-0 bg-background"> {/* Submit button area */}
+              <div className="mt-8 pt-6 border-t border-border px-6 pb-6 sticky bottom-0 bg-background z-10"> 
                 <Button type="submit" className="w-full sm:w-auto" variant="default">Submit Preview</Button>
               </div>
             </form>
