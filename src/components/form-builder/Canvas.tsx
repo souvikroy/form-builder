@@ -13,6 +13,8 @@ interface DropItem {
   id?: string; // id is present if dragging an existing element
 }
 
+const GRID_SNAP_SIZE = 20; // Pixels
+
 export default function Canvas() {
   const { formDefinition, addElement, setSelectedElement, selectedElement } = useFormBuilder();
   const dropZoneRef = useRef<HTMLDivElement>(null); 
@@ -21,16 +23,15 @@ export default function Canvas() {
     () => ({
       accept: ItemTypes.FORM_ELEMENT,
       drop: (item: DropItem, monitor) => {
-        if (!monitor.isOver({ shallow: true })) { // Ensure drop is directly on canvas, not child
+        if (!monitor.isOver({ shallow: true })) { 
             return;
         }
 
-        const clientOffset = monitor.getClientOffset(); // Mouse position relative to viewport
+        const clientOffset = monitor.getClientOffset(); 
 
-        // This handles dropping NEW elements from the sidebar onto the canvas
         if (!item.id && clientOffset && dropZoneRef.current) { 
-          const canvasContentRect = dropZoneRef.current.getBoundingClientRect(); // Rect of the large content div relative to viewport
-          const scrollingViewport = dropZoneRef.current.parentElement?.parentElement; // This should be the ScrollArea's Viewport element
+          const canvasContentRect = dropZoneRef.current.getBoundingClientRect(); 
+          const scrollingViewport = dropZoneRef.current.parentElement?.parentElement; 
 
           if (scrollingViewport) {
             const scrollLeft = scrollingViewport.scrollLeft;
@@ -39,17 +40,18 @@ export default function Canvas() {
             let x = clientOffset.x - canvasContentRect.left + scrollLeft;
             let y = clientOffset.y - canvasContentRect.top + scrollTop;
             
-            // Ensure coordinates are non-negative and round them
-            x = Math.max(0, Math.round(x));
-            y = Math.max(0, Math.round(y));
+            // Snap to grid
+            x = Math.round(x / GRID_SNAP_SIZE) * GRID_SNAP_SIZE;
+            y = Math.round(y / GRID_SNAP_SIZE) * GRID_SNAP_SIZE;
+            
+            x = Math.max(0, x);
+            y = Math.max(0, y);
             
             const newEl = addElement(item.type, { x, y });
             setSelectedElement(newEl);
           }
         }
-        // If item.id exists, it means an existing CanvasElement is being dragged.
-        // Its position update is handled by its own useDrag's end() method in CanvasElement.tsx
-        return { droppedOn: 'canvas' }; // Signifies the drop target
+        return { droppedOn: 'canvas' };
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver({ shallow: true }),
@@ -59,7 +61,7 @@ export default function Canvas() {
     [addElement, setSelectedElement]
   );
 
-  dropCollect(dropZoneRef); // Apply the drop target to the ref
+  dropCollect(dropZoneRef);
 
   const handleSelectElement = (element: FormElementType) => {
     setSelectedElement(element);
@@ -73,14 +75,16 @@ export default function Canvas() {
           isOver && canDrop ? 'bg-primary/10' : 'bg-muted/20'
         } ${formDefinition.length === 0 ? 'flex flex-col items-center justify-center' : ''}`}
         style={{ 
-            position: 'relative', // Crucial for absolute positioning of children
+            position: 'relative', 
             minWidth: '2500px', 
             minHeight: '1800px', 
-            padding: '32px', // Equivalent to p-8
+            padding: '32px', 
+            backgroundImage: `radial-gradient(circle, hsl(var(--border)) 0.5px, transparent 0.5px)`,
+            backgroundSize: `${GRID_SNAP_SIZE}px ${GRID_SNAP_SIZE}px`,
         }} 
       >
         {formDefinition.length === 0 ? (
-          <div className="text-center text-muted-foreground p-10 border-2 border-dashed border-border rounded-lg">
+          <div className="text-center text-muted-foreground p-10 border-2 border-dashed border-border rounded-lg bg-background/80">
             <p className="text-lg font-medium">Drag and drop elements here</p>
             <p className="text-sm">Build your form by adding elements from the left panel.</p>
           </div>
@@ -91,6 +95,7 @@ export default function Canvas() {
               element={element}
               isSelected={selectedElement?.id === element.id}
               onSelect={() => handleSelectElement(element)}
+              gridSnapSize={GRID_SNAP_SIZE}
             />
           ))
         )}

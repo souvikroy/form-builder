@@ -18,18 +18,19 @@ interface CanvasElementProps {
   element: FormElement;
   isSelected: boolean;
   onSelect: () => void;
+  gridSnapSize: number;
 }
 
 interface DragItem {
   id: string;
-  type: string; // Should match ItemTypes.FORM_ELEMENT
+  type: string; 
   originalX: number;
   originalY: number;
 }
 
-const MIN_WIDTH = 100; // Minimum width in pixels for an element
+const MIN_WIDTH = 100; 
 
-export default function CanvasElement({ element, isSelected, onSelect }: CanvasElementProps) {
+export default function CanvasElement({ element, isSelected, onSelect, gridSnapSize }: CanvasElementProps) {
   const { removeElement, setSelectedElement, updateElement } = useFormBuilder();
   const cardRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
@@ -53,14 +54,18 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
       end: (item, monitor) => {
         const delta = monitor.getDifferenceFromInitialOffset(); 
         if (delta) {
-          const newX = Math.round(item.originalX + delta.x);
-          const newY = Math.round(item.originalY + delta.y);
+          let newX = Math.round(item.originalX + delta.x);
+          let newY = Math.round(item.originalY + delta.y);
+
+          // Snap to grid
+          newX = Math.round(newX / gridSnapSize) * gridSnapSize;
+          newY = Math.round(newY / gridSnapSize) * gridSnapSize;
+          
           updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
         }
       },
     }),
-    // Dependencies ensure the item factory and end function capture the latest element props and context functions
-    [element.id, element.x, element.y, updateElement] 
+    [element.id, element.x, element.y, updateElement, gridSnapSize] 
   );
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -79,6 +84,10 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
       const dx = e.clientX - initialMouseX;
       let newWidth = initialWidth + dx;
       newWidth = Math.max(MIN_WIDTH, newWidth);
+      // Snap width to grid
+      newWidth = Math.round(newWidth / gridSnapSize) * gridSnapSize;
+      newWidth = Math.max(MIN_WIDTH, newWidth); // Ensure min width after snapping
+
       updateElement(element.id, { width: `${newWidth}px` });
     };
 
@@ -96,7 +105,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, initialMouseX, initialWidth, element.id, updateElement]);
+  }, [isResizing, initialMouseX, initialWidth, element.id, updateElement, gridSnapSize]);
 
 
   const renderElementPreview = () => {
@@ -198,7 +207,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
         `}
       >
         <CardHeader 
-            ref={drag} // Apply drag to the CardHeader
+            ref={drag} 
             className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between cursor-move"
         >
           <div className="flex items-center gap-2 overflow-hidden">
