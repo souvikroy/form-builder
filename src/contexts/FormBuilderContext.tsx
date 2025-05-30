@@ -67,8 +67,6 @@ export const FormBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setSelectedElementInternal(element);
   }, []);
 
-  // moveElement primarily affects the logical order in the array, not direct visual x/y positioning.
-  // Its utility in a 2D free-form canvas might be for accessibility (tab order) or data export order.
   const moveElement = useCallback((dragIndex: number, hoverIndex: number) => {
     setFormDefinition((prev) => {
       const newDef = [...prev];
@@ -79,88 +77,67 @@ export const FormBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   const updateOption = useCallback((elementId: string, optionId: string, optionUpdates: Partial<FormElementOption>) => {
+    let modifiedElement: FormElement | null = null;
     setFormDefinition(prevDef => prevDef.map(el => {
       if (el.id === elementId && (el.type === 'dropdown' || el.type === 'radio')) {
         const optionsEl = el as OptionsFormElement;
-        return {
-          ...optionsEl,
-          options: optionsEl.options.map(opt => opt.id === optionId ? { ...opt, ...optionUpdates } : opt)
-        };
+        const updatedOptions = optionsEl.options.map(opt => opt.id === optionId ? { ...opt, ...optionUpdates } : opt);
+        const newVersionOfElement = { ...optionsEl, options: updatedOptions };
+        if (selectedElement?.id === elementId) {
+            modifiedElement = newVersionOfElement;
+        }
+        return newVersionOfElement;
       }
       return el;
     }));
-    setSelectedElementInternal(prevSel => {
-      if (prevSel && prevSel.id === elementId && (prevSel.type === 'dropdown' || prevSel.type === 'radio')) {
-        const optionsEl = prevSel as OptionsFormElement;
-        return {
-          ...optionsEl,
-          options: optionsEl.options.map(opt => opt.id === optionId ? { ...opt, ...optionUpdates } : opt)
-        };
-      }
-      return prevSel;
-    });
-  }, []);
+    
+    if (modifiedElement) {
+        setSelectedElementInternal(modifiedElement);
+    }
+  }, [selectedElement]);
 
   const addOption = useCallback((elementId: string) => {
+    let modifiedElement: FormElement | null = null;
     setFormDefinition(prevDef => prevDef.map(el => {
       if (el.id === elementId && (el.type === 'dropdown' || el.type === 'radio')) {
         const optionsEl = el as OptionsFormElement;
         const newOption: FormElementOption = {
           id: crypto.randomUUID(),
           label: `New Option ${optionsEl.options.length + 1}`,
-          value: `option${optionsEl.options.length + 1}`
+          value: `option_${crypto.randomUUID().substring(0,4)}` // Ensure unique value
         };
-        return { ...optionsEl, options: [...optionsEl.options, newOption] };
+        const newVersionOfElement = { ...optionsEl, options: [...optionsEl.options, newOption] };
+        if (selectedElement?.id === elementId) {
+            modifiedElement = newVersionOfElement;
+        }
+        return newVersionOfElement;
       }
       return el;
     }));
-     setSelectedElementInternal(prevSel => {
-      if (prevSel && prevSel.id === elementId && (prevSel.type === 'dropdown' || prevSel.type === 'radio')) {
-         // To ensure consistency, re-fetch the element from the updated formDefinition if possible,
-         // or rely on useEffect in PropertyEditor to pick up changes.
-         // For simplicity here, we'll update it similarly, but this could be improved.
-        const optionsEl = prevSel as OptionsFormElement;
-        const newOption: FormElementOption = {
-          id: crypto.randomUUID(), 
-          label: `New Option ${optionsEl.options.length + 1}`,
-          value: `option${optionsEl.options.length + 1}`
-        };
-        const updatedSelectedElement = { ...optionsEl, options: [...optionsEl.options, newOption] };
-        // It's better if PropertyEditor derives its state from formDefinition to avoid stale selectedElement state.
-        // For now, this attempts to keep selectedElement in sync.
-        setFormDefinition(currentFormDef => {
-            const matchingElement = currentFormDef.find(e => e.id === elementId);
-            if (matchingElement) setSelectedElementInternal(matchingElement);
-            return currentFormDef;
-        });
-        return updatedSelectedElement;
-      }
-      return prevSel;
-    });
-  }, []);
+
+    if (modifiedElement) {
+        setSelectedElementInternal(modifiedElement);
+    }
+  }, [selectedElement]);
 
   const removeOption = useCallback((elementId: string, optionId: string) => {
+    let modifiedElement: FormElement | null = null;
     setFormDefinition(prevDef => prevDef.map(el => {
       if (el.id === elementId && (el.type === 'dropdown' || el.type === 'radio')) {
         const optionsEl = el as OptionsFormElement;
-        return { ...optionsEl, options: optionsEl.options.filter(opt => opt.id !== optionId) };
+        const newVersionOfElement = { ...optionsEl, options: optionsEl.options.filter(opt => opt.id !== optionId) };
+        if (selectedElement?.id === elementId) {
+            modifiedElement = newVersionOfElement;
+        }
+        return newVersionOfElement;
       }
       return el;
     }));
-    setSelectedElementInternal(prevSel => {
-       if (prevSel && prevSel.id === elementId && (prevSel.type === 'dropdown' || prevSel.type === 'radio')) {
-        const optionsEl = prevSel as OptionsFormElement;
-        const updatedSelectedElement = { ...optionsEl, options: optionsEl.options.filter(opt => opt.id !== optionId) };
-        setFormDefinition(currentFormDef => {
-            const matchingElement = currentFormDef.find(e => e.id === elementId);
-            if (matchingElement) setSelectedElementInternal(matchingElement);
-            return currentFormDef;
-        });
-        return updatedSelectedElement;
-      }
-      return prevSel;
-    });
-  }, []);
+
+    if (modifiedElement) {
+        setSelectedElementInternal(modifiedElement);
+    }
+  }, [selectedElement]);
 
 
   return (
@@ -190,3 +167,4 @@ export const useFormBuilder = () => {
   }
   return context;
 };
+
