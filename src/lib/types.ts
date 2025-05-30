@@ -9,7 +9,7 @@ export type ElementType =
   | 'checkbox'
   | 'date'
   | 'file'
-  | 'table'; // Added 'table' type
+  | 'table';
 
 export interface FormElementOption {
   id: string;
@@ -26,6 +26,7 @@ export interface BaseFormElement {
   defaultValue?: any;
   required?: boolean;
   helperText?: string;
+  width?: string; // Added width property
 }
 
 export interface TextFormElement extends BaseFormElement {
@@ -67,10 +68,10 @@ export interface DateFormElement extends BaseFormElement {
 
 export interface FileFormElement extends BaseFormElement {
   type: 'file';
-  accept?: string; 
+  accept?: string;
 }
 
-export interface TableFormElement extends BaseFormElement { // Added TableFormElement
+export interface TableFormElement extends BaseFormElement {
   type: 'table';
   rows: number;
   cols: number;
@@ -85,18 +86,20 @@ export type FormElement =
   | CheckboxFormElement
   | DateFormElement
   | FileFormElement
-  | TableFormElement; // Added TableFormElement to union
+  | TableFormElement;
 
 export type FormDefinition = FormElement[];
 
 // Helper to create a new form element with defaults
 export const createNewFormElement = (type: ElementType): FormElement => {
   const id = crypto.randomUUID();
+  const defaultWidth = '280px'; // Default width for new elements
   const baseElement: Omit<BaseFormElement, 'type'> = {
     id,
     name: `${type}_${id.substring(0, 4)}`,
     label: `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
     required: false,
+    width: defaultWidth,
   };
 
   switch (type) {
@@ -132,7 +135,7 @@ export const createNewFormElement = (type: ElementType): FormElement => {
       return { ...baseElement, type } as DateFormElement;
     case 'file':
       return { ...baseElement, type } as FileFormElement;
-    case 'table': // Added case for 'table'
+    case 'table':
       return { ...baseElement, type, rows: 3, cols: 2 } as TableFormElement;
     default:
       throw new Error(`Unsupported element type: ${type}`);
