@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import type { XYCoord } from 'dnd-core';
 import { useDrag, useDrop } from 'react-dnd';
-import type { FormElement } from '@/lib/types';
+import type { FormElement, TableFormElement as TableFormElementType } from '@/lib/types'; // Added TableFormElementType
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GripVertical, Trash2 } from 'lucide-react';
@@ -12,9 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar'; // For DatePicker, if using ShadCN
+// import { Calendar } from '@/components/ui/calendar'; // Not directly used for preview here
 import { useFormBuilder } from '@/contexts/FormBuilderContext';
-import { ItemTypes } from './DraggableItem'; // For reordering
+import { ItemTypes } from './DraggableItem'; 
 
 interface CanvasElementProps {
   element: FormElement;
@@ -27,7 +27,7 @@ interface CanvasElementProps {
 interface DragItem {
   index: number;
   id: string;
-  type: string; // Should be ItemTypes.FORM_ELEMENT
+  type: string; 
 }
 
 export default function CanvasElement({ element, index, isSelected, onSelect, moveElement }: CanvasElementProps) {
@@ -35,7 +35,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: any }>({
-    accept: ItemTypes.FORM_ELEMENT, // Accept elements from sidebar and other canvas elements for reordering
+    accept: ItemTypes.FORM_ELEMENT, 
     collect(monitor) {
       return {
         handlerId: monitor.getHandlerId(),
@@ -45,7 +45,6 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
       if (!ref.current) {
         return;
       }
-      // If item.type is from sidebar, it won't have item.index - this is for reordering existing elements
       if (item.index === undefined) return; 
       
       const dragIndex = item.index;
@@ -67,23 +66,21 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
         return;
       }
       moveElement(dragIndex, hoverIndex);
-      item.index = hoverIndex; // Mutate the item to avoid re-triggering
+      item.index = hoverIndex; 
     },
   });
 
   const [{ isDragging }, drag, preview] = useDrag({
-    type: ItemTypes.FORM_ELEMENT, // Mark this as a draggable form element for reordering
-    item: () => ({ id: element.id, index, type: ItemTypes.FORM_ELEMENT }), // Add type for consistency
+    type: ItemTypes.FORM_ELEMENT, 
+    item: () => ({ id: element.id, index, type: ItemTypes.FORM_ELEMENT }), 
     collect: (monitor: any) => ({
       isDragging: monitor.isDragging(),
     }),
   });
 
-  drag(drop(ref)); // Attach both drag and drop to the same ref for reordering
+  drag(drop(ref)); 
 
   const renderElementPreview = () => {
-    // This is a simplified preview for the canvas.
-    // Actual form rendering for preview modal would be more detailed.
     switch (element.type) {
       case 'text':
       case 'number':
@@ -109,7 +106,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
           <div className="mt-1 space-y-1">
             {(element as any).options.map((opt: any) => (
               <div key={opt.id || opt.value} className="flex items-center gap-2">
-                <input type="radio" name={element.name} value={opt.value} defaultChecked={element.defaultValue === opt.value} disabled className="form-radio h-4 w-4" />
+                <input type="radio" name={element.name} value={opt.value} defaultChecked={element.defaultValue === opt.value} disabled className="form-radio h-4 w-4 accent-primary" />
                 <Label htmlFor={opt.id || opt.value} className="text-sm">{opt.label}</Label>
               </div>
             ))}
@@ -120,24 +117,42 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
           <div className="flex items-center mt-1 gap-2">
             <Checkbox id={element.id} defaultChecked={element.defaultValue} disabled />
             <Label htmlFor={element.id} className="text-sm">{element.label}</Label> 
-            {/* Checkbox on canvas usually doesn't re-render its own label like this, it's part of the header. 
-                This specific label is for the checkbox functionality itself. The overall element label is in CardHeader.
-                So, this should be `element.label` if checkbox is a single element, or empty if part of group.
-                For simplicity, using element.label here but in properties it would be different. Let's make it static for now.
-            */}
           </div>
         );
       case 'date':
         return <Input type="date" defaultValue={element.defaultValue} readOnly className="mt-1 bg-muted/30" />;
       case 'file':
         return <Input type="file" disabled className="mt-1 bg-muted/30" />;
+      case 'table': // Added table preview
+        const tableEl = element as TableFormElementType;
+        const previewRows = Math.min(tableEl.rows, 3);
+        const previewCols = Math.min(tableEl.cols, 3);
+        return (
+          <div className="mt-1 overflow-auto">
+            <table className="w-full border-collapse border border-border text-xs">
+              <tbody>
+                {Array.from({ length: previewRows }).map((_, rIndex) => (
+                  <tr key={rIndex} className="border-b border-border">
+                    {Array.from({ length: previewCols }).map((_, cIndex) => (
+                      <td key={cIndex} className={`border-border p-1 h-5 text-muted-foreground ${cIndex < previewCols -1 ? 'border-r' : ''}`}>
+                        {/* Cell */}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(tableEl.rows > 3 || tableEl.cols > 3) && <p className="text-xs text-muted-foreground mt-1 text-center">Preview limited to 3x3</p>}
+             <p className="text-xs text-muted-foreground mt-1 text-center">({tableEl.rows} rows x {tableEl.cols} cols)</p>
+          </div>
+        );
       default:
         return <p className="text-sm text-muted-foreground">Unsupported element type</p>;
     }
   };
 
   const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent selection when deleting
+    e.stopPropagation(); 
     removeElement(element.id);
     if (isSelected) {
       setSelectedElement(null);
@@ -160,7 +175,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
               <GripVertical size={18} />
             </div>
             <CardTitle className="text-base font-medium text-foreground truncate" title={element.label}>
-              {element.label || `${element.type} Field`}
+              {element.label || `${element.type.charAt(0).toUpperCase() + element.type.slice(1)} Field`}
             </CardTitle>
           </div>
           <Button
@@ -174,8 +189,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
           </Button>
         </CardHeader>
         <CardContent className="p-4">
-          {/* Minimal preview for canvas, doesn't need full label again if in header */}
-          {element.type !== 'checkbox' && element.placeholder && (
+          {(element.type !== 'checkbox' && element.type !== 'table') && element.placeholder && (
              <p className="text-xs text-muted-foreground mb-1">Placeholder: {element.placeholder}</p>
           )}
           {renderElementPreview()}

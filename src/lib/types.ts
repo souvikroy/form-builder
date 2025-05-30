@@ -8,7 +8,8 @@ export type ElementType =
   | 'radio'
   | 'checkbox'
   | 'date'
-  | 'file';
+  | 'file'
+  | 'table'; // Added 'table' type
 
 export interface FormElementOption {
   id: string;
@@ -58,8 +59,6 @@ export interface OptionsFormElement extends BaseFormElement {
 
 export interface CheckboxFormElement extends BaseFormElement {
   type: 'checkbox';
-  // If it's a group, options might be here. For a single checkbox, label is primary.
-  // Let's assume this is for a single checkbox for now.
 }
 
 export interface DateFormElement extends BaseFormElement {
@@ -68,7 +67,13 @@ export interface DateFormElement extends BaseFormElement {
 
 export interface FileFormElement extends BaseFormElement {
   type: 'file';
-  accept?: string; // e.g., "image/*, .pdf"
+  accept?: string; 
+}
+
+export interface TableFormElement extends BaseFormElement { // Added TableFormElement
+  type: 'table';
+  rows: number;
+  cols: number;
 }
 
 export type FormElement =
@@ -79,7 +84,8 @@ export type FormElement =
   | OptionsFormElement
   | CheckboxFormElement
   | DateFormElement
-  | FileFormElement;
+  | FileFormElement
+  | TableFormElement; // Added TableFormElement to union
 
 export type FormDefinition = FormElement[];
 
@@ -126,6 +132,8 @@ export const createNewFormElement = (type: ElementType): FormElement => {
       return { ...baseElement, type } as DateFormElement;
     case 'file':
       return { ...baseElement, type } as FileFormElement;
+    case 'table': // Added case for 'table'
+      return { ...baseElement, type, rows: 3, cols: 2 } as TableFormElement;
     default:
       throw new Error(`Unsupported element type: ${type}`);
   }

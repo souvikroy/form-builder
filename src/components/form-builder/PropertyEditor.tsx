@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import type { FormElement, FormElementOption, OptionsFormElement } from '@/lib/types';
+import type { FormElement, FormElementOption, OptionsFormElement, TableFormElement as TableFormElementType } from '@/lib/types'; // Added TableFormElementType
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 export default function PropertyEditor() {
@@ -33,7 +33,8 @@ export default function PropertyEditor() {
     if (type === 'checkbox') {
       processedValue = (e.target as HTMLInputElement).checked;
     } else if (type === 'number') {
-      processedValue = value === '' ? undefined : parseFloat(value);
+      processedValue = value === '' ? undefined : parseInt(value, 10); // Use parseInt for integer values like rows/cols
+      if (isNaN(processedValue)) processedValue = undefined; // Ensure NaN becomes undefined
     }
     
     setFormData(prev => ({ ...prev, [name]: processedValue }));
@@ -78,7 +79,7 @@ export default function PropertyEditor() {
         <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} />
         <p className="text-xs text-muted-foreground">Unique identifier for this field.</p>
       </div>
-      { (selectedElement.type !== 'checkbox' && selectedElement.type !== 'radio' && selectedElement.type !== 'file') &&
+      { (selectedElement.type !== 'checkbox' && selectedElement.type !== 'radio' && selectedElement.type !== 'file' && selectedElement.type !== 'table') &&
         <div className="space-y-1">
           <Label htmlFor="placeholder">Placeholder</Label>
           <Input id="placeholder" name="placeholder" value={formData.placeholder || ''} onChange={handleChange} />
@@ -109,16 +110,16 @@ export default function PropertyEditor() {
           <>
             <div className="space-y-1">
               <Label htmlFor="minLength">Min Length</Label>
-              <Input id="minLength" name="minLength" type="number" value={formData.minLength || ''} onChange={handleChange} />
+              <Input id="minLength" name="minLength" type="number" value={formData.minLength || ''} onChange={handleChange} min="0" />
             </div>
             <div className="space-y-1">
               <Label htmlFor="maxLength">Max Length</Label>
-              <Input id="maxLength" name="maxLength" type="number" value={formData.maxLength || ''} onChange={handleChange} />
+              <Input id="maxLength" name="maxLength" type="number" value={formData.maxLength || ''} onChange={handleChange} min="0" />
             </div>
             {selectedElement.type === 'textarea' && (
               <div className="space-y-1">
                 <Label htmlFor="rows">Rows</Label>
-                <Input id="rows" name="rows" type="number" value={(formData as any).rows || ''} onChange={handleChange} />
+                <Input id="rows" name="rows" type="number" value={(formData as any).rows || ''} onChange={handleChange} min="1"/>
               </div>
             )}
           </>
@@ -128,11 +129,11 @@ export default function PropertyEditor() {
           <>
             <div className="space-y-1">
               <Label htmlFor="min">Min Value</Label>
-              <Input id="min" name="min" type="number" value={formData.min || ''} onChange={handleChange} />
+              <Input id="min" name="min" type="number" value={formData.min === undefined ? '' : formData.min} onChange={handleChange} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="max">Max Value</Label>
-              <Input id="max" name="max" type="number" value={formData.max || ''} onChange={handleChange} />
+              <Input id="max" name="max" type="number" value={formData.max === undefined ? '' : formData.max} onChange={handleChange} />
             </div>
           </>
         );
@@ -175,6 +176,20 @@ export default function PropertyEditor() {
             <p className="text-xs text-muted-foreground">Comma-separated (e.g. image/*, .pdf)</p>
           </div>
         );
+      case 'table': // Added properties for Table element
+        const tableFormData = formData as Partial<TableFormElementType>;
+        return (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor="rows">Number of Rows</Label>
+              <Input id="rows" name="rows" type="number" value={tableFormData.rows || ''} onChange={handleChange} min="1" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cols">Number of Columns</Label>
+              <Input id="cols" name="cols" type="number" value={tableFormData.cols || ''} onChange={handleChange} min="1" />
+            </div>
+          </>
+        );
       default:
         return null;
     }
@@ -183,10 +198,10 @@ export default function PropertyEditor() {
   return (
     <aside className="w-80 border-l border-border bg-card shadow-md">
       <CardHeader className="py-4 px-6">
-        <CardTitle className="text-lg font-semibold text-foreground">Properties: {selectedElement.type}</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">Properties: {selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)}</CardTitle>
       </CardHeader>
       <Separator />
-      <ScrollArea className="h-[calc(100vh-8rem)]"> {/* Adjust height based on header/footer of editor */}
+      <ScrollArea className="h-[calc(100vh-8rem)]"> 
         <CardContent className="p-6 space-y-4">
           {renderCommonProperties()}
           <Separator className="my-4" />

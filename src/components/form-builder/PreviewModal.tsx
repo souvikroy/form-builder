@@ -2,7 +2,7 @@
 "use client";
 import React from 'react';
 import { useFormBuilder } from '@/contexts/FormBuilderContext';
-import type { FormElement as FormElementType, OptionsFormElement, TextareaFormElement, FileFormElement } from '@/lib/types';
+import type { FormElement as FormElementType, OptionsFormElement, TextareaFormElement, FileFormElement, TableFormElement as TableFormElementType } from '@/lib/types'; // Added TableFormElementType
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar'; // For DatePicker, if using ShadCN
+// import { Calendar } from '@/components/ui/calendar'; // Calendar component not directly used here, Popover used instead
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
@@ -84,7 +84,6 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
                 <div className="flex items-center space-x-2 mt-2">
                   <Checkbox id={element.id} name={element.name} defaultChecked={!!element.defaultValue} required={element.required} />
                   <Label htmlFor={element.id} className="font-normal">{element.label}</Label> 
-                  {/* This label is for the checkbox itself, the main label is above */}
                 </div>
               );
             case 'date':
@@ -115,6 +114,30 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
             case 'file':
               const fileEl = element as FileFormElement;
               return <Input type="file" accept={fileEl.accept} {...commonProps} className="bg-input" />;
+            case 'table': // Added table rendering for preview
+              const tableEl = element as TableFormElementType;
+              return (
+                <div className="overflow-x-auto mt-2">
+                  <table className="w-full border-collapse border border-border text-sm">
+                    {/* Optional: Add a caption or header row if needed based on table properties */}
+                    {/* <caption className="text-sm text-muted-foreground mb-1 text-left p-1">
+                      {tableEl.label} ({tableEl.rows} rows, {tableEl.cols} columns)
+                    </caption> */}
+                    <tbody>
+                      {Array.from({ length: tableEl.rows }).map((_, rIndex) => (
+                        <tr key={rIndex} className="border-b border-border">
+                          {Array.from({ length: tableEl.cols }).map((_, cIndex) => (
+                            <td key={cIndex} className={`border-border p-2 h-10 bg-input/20 text-center text-muted-foreground ${cIndex < tableEl.cols -1 ? 'border-r' : ''}`}>
+                              {/* Placeholder for cell content. For a real form, cells might be inputs. */}
+                              {/* Cell {rIndex + 1}-{cIndex + 1} */}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
             default:
               return <p className="text-sm text-destructive">Unsupported element type in preview</p>;
           }
@@ -137,7 +160,6 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
         data[key] = value;
       }
     });
-    // Include date values from state
     Object.entries(dateValues).forEach(([elementId, date]) => {
         const formElement = formDefinition.find(el => el.id === elementId);
         if(formElement && date) {
@@ -161,7 +183,7 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
           {formDefinition.length === 0 ? (
             <p className="text-muted-foreground text-center py-10">The form is empty. Add some elements to preview.</p>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-0"> {/* Removed space-y-6, element has mb-6 */}
+            <form onSubmit={handleSubmit} className="space-y-0">
               {formDefinition.map(renderFormElement)}
               <div className="mt-8 pt-6 border-t border-border">
                 <Button type="submit" className="w-full sm:w-auto" variant="default">Submit Preview</Button>

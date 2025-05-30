@@ -15,6 +15,7 @@ import {
   CheckSquare,
   CalendarDays,
   FileUp,
+  Table as TableIcon, // Added TableIcon
 } from 'lucide-react';
 
 const formElements: { type: ElementType; label: string; icon: React.ElementType }[] = [
@@ -27,6 +28,7 @@ const formElements: { type: ElementType; label: string; icon: React.ElementType 
   { type: 'checkbox', label: 'Checkbox', icon: CheckSquare },
   { type: 'date', label: 'Date Picker', icon: CalendarDays },
   { type: 'file', label: 'File Upload', icon: FileUp },
+  { type: 'table', label: 'Table', icon: TableIcon }, // Added Table element
 ];
 
 export default function ElementSidebar() {
