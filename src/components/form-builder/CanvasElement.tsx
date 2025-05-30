@@ -51,13 +51,13 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
     }),
     end: (item, monitor) => {
       const didDrop = monitor.didDrop();
-      // Check if it was dropped on a valid target (e.g., the canvas defined in Canvas.tsx)
-      // The dropResult will contain { droppedOn: 'canvas' } if dropped on our main canvas.
-      if (!didDrop || !monitor.getDropResult() || (monitor.getDropResult() as any)?.droppedOn !== 'canvas') {
-        // If not dropped on our main canvas (e.g., dropped outside, or on an unhandled target)
-        // For now, we do nothing if not on 'canvas'. This means it will update its position
-        // based on the delta even if dropped outside the viewport, which is fine.
-      }
+      // The dropResult helps identify if it was dropped on a specific target like the main canvas.
+      // However, for free-form dragging, we want the element to update its position based on where
+      // it was released, regardless of whether it was technically over the 'canvas' drop target
+      // or even outside the viewport briefly.
+      // The `(monitor.getDropResult() as any)?.droppedOn !== 'canvas'` check can be useful for
+      // specific behaviors (e.g. reverting if not on a valid zone), but for our current
+      // free-form placement, we proceed with the position update.
       
       const delta = monitor.getDifferenceFromInitialOffset(); // Delta in viewport coordinates
       if (delta) {
@@ -244,3 +244,4 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
     </div>
   );
 }
+

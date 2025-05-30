@@ -29,20 +29,28 @@ export default function Canvas() {
 
         // This handles dropping NEW elements from the sidebar onto the canvas
         if (!item.id && clientOffset && dropZoneRef.current) { 
-          const canvasRect = dropZoneRef.current.getBoundingClientRect(); // Canvas viewport position & size
-          const scrollLeft = dropZoneRef.current.scrollLeft;
-          const scrollTop = dropZoneRef.current.scrollTop;
+          const canvasContentRect = dropZoneRef.current.getBoundingClientRect(); // Rect of the large content div relative to viewport
+          const scrollingViewport = dropZoneRef.current.parentElement; // This should be the ScrollAreaViewport
 
-          // Calculate where to place the element within the scrollable canvas content
-          let x = clientOffset.x - canvasRect.left + scrollLeft;
-          let y = clientOffset.y - canvasRect.top + scrollTop;
-          
-          // Ensure coordinates are non-negative and round them
-          x = Math.max(0, Math.round(x));
-          y = Math.max(0, Math.round(y));
-          
-          const newEl = addElement(item.type, { x, y });
-          setSelectedElement(newEl);
+          if (scrollingViewport) {
+            const scrollLeft = scrollingViewport.scrollLeft;
+            const scrollTop = scrollingViewport.scrollTop;
+
+            // Position of mouse *within the visible part of the content div*:
+            // mouseXInContentVisible = clientOffset.x - canvasContentRect.left
+            // mouseYInContentVisible = clientOffset.y - canvasContentRect.top
+            //
+            // Add scroll to get position *within the total scrollable content*:
+            let x = clientOffset.x - canvasContentRect.left + scrollLeft;
+            let y = clientOffset.y - canvasContentRect.top + scrollTop;
+            
+            // Ensure coordinates are non-negative and round them
+            x = Math.max(0, Math.round(x));
+            y = Math.max(0, Math.round(y));
+            
+            const newEl = addElement(item.type, { x, y });
+            setSelectedElement(newEl);
+          }
         }
         // If item.id exists, it means an existing CanvasElement is being dragged.
         // Its position update is handled by its own useDrag's end() method in CanvasElement.tsx
@@ -95,3 +103,4 @@ export default function Canvas() {
     </ScrollArea>
   );
 }
+
