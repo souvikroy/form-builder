@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { useDrag } from 'react-dnd'; // Removed useDrop and XYCoord as reordering logic changes
+import { useDrag } from 'react-dnd';
 import type { FormElement, TableFormElement as TableFormElementType } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,15 +16,13 @@ import { ItemTypes } from './DraggableItem';
 
 interface CanvasElementProps {
   element: FormElement;
-  // index prop might be less relevant if not used for reordering, but kept if needed by drag item
   isSelected: boolean;
   onSelect: () => void;
-  // moveElement prop is removed as positioning is now x/y based
 }
 
 interface DragItem {
   id: string;
-  type: string;
+  type: string; // Should match ItemTypes.FORM_ELEMENT
   originalX: number;
   originalY: number;
 }
@@ -33,19 +31,18 @@ const MIN_WIDTH = 100; // Minimum width in pixels for an element
 
 export default function CanvasElement({ element, isSelected, onSelect }: CanvasElementProps) {
   const { removeElement, setSelectedElement, updateElement } = useFormBuilder();
-  const cardRef = useRef<HTMLDivElement>(null); // Ref for the card, used for resize logic
+  const cardRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
   const [isResizing, setIsResizing] = useState(false);
   const [initialWidth, setInitialWidth] = useState(0);
   const [initialMouseX, setInitialMouseX] = useState(0);
 
-  // Drag hook for moving the element on the canvas
   const [{ isDragging }, drag, preview] = useDrag({
     type: ItemTypes.FORM_ELEMENT,
     item: (): DragItem => ({
       id: element.id,
-      type: ItemTypes.FORM_ELEMENT,
+      type: ItemTypes.FORM_ELEMENT, // Explicitly set item type
       originalX: element.x || 0,
       originalY: element.y || 0,
     }),
@@ -54,36 +51,32 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
     }),
     end: (item, monitor) => {
       const didDrop = monitor.didDrop();
-      // Ensure it was dropped on a valid target (e.g., the canvas)
-      // and not just released mid-air without a target.
-      // If getDropResult is not specific, any successful drop will trigger update.
-      if (!didDrop && !monitor.getDropResult()) { 
-        // If not dropped on a valid target, could revert or do nothing (stays at last known valid position)
-        return;
+      // Check if it was dropped on a valid target (e.g., the canvas defined in Canvas.tsx)
+      // The dropResult will contain { droppedOn: 'canvas' } if dropped on our main canvas.
+      if (!didDrop || !monitor.getDropResult() || (monitor.getDropResult() as any)?.droppedOn !== 'canvas') {
+        // If not dropped on our main canvas (e.g., dropped outside, or on an unhandled target)
+        // we might revert or just do nothing (element stays at its last known valid position before this invalid drop attempt)
+        // For now, we do nothing if not on 'canvas', meaning it will update based on offset even if dropped outside viewport.
+        // This could be refined if reverting to original position on invalid drop is desired.
       }
       
       const delta = monitor.getDifferenceFromInitialOffset();
       if (delta) {
         const newX = Math.round(item.originalX + delta.x);
         const newY = Math.round(item.originalY + delta.y);
-        // Ensure position is not negative, or within canvas bounds if desired
         updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
       }
     },
   });
 
-  // Attach preview to the entire element div, drag to the grip handle
-  // preview(cardRef) is not correct. preview applies to the top-level draggable node.
-  // drag should be applied to the grip.
-
   const handleResizeMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent card selection when starting resize
     setIsResizing(true);
     const currentWidth = cardRef.current?.offsetWidth || parseInt(element.width || '280', 10);
     setInitialWidth(currentWidth);
     setInitialMouseX(e.clientX);
-    setSelectedElement(element);
+    setSelectedElement(element); // Keep element selected during resize
   }, [element, setSelectedElement]);
 
   useEffect(() => {
@@ -92,6 +85,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
       const dx = e.clientX - initialMouseX;
       let newWidth = initialWidth + dx;
       newWidth = Math.max(MIN_WIDTH, newWidth);
+      // Update element width in context
       updateElement(element.id, { width: `${newWidth}px` });
     };
 
@@ -113,7 +107,6 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
 
 
   const renderElementPreview = () => {
-    // ... (preview rendering logic remains the same)
     switch (element.type) {
       case 'text':
       case 'number':
@@ -149,6 +142,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
         return (
           <div className="flex items-center mt-1 gap-2">
             <Checkbox id={element.id} defaultChecked={element.defaultValue} disabled />
+            {/* The label for checkbox is part of element.label, not a separate prop here typically */}
             <Label htmlFor={element.id} className="text-sm">{element.label}</Label>
           </div>
         );
@@ -185,7 +179,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
   };
 
   const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent card selection
     removeElement(element.id);
     if (isSelected) {
       setSelectedElement(null);
@@ -193,28 +187,29 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
   };
   
   const elementStyle: React.CSSProperties = {
-    width: element.width || '280px',
+    width: element.width || '280px', // Default width if not specified
     opacity: isDragging ? 0.4 : 1,
     minWidth: `${MIN_WIDTH}px`,
-    position: 'absolute', // Key change for positioning
+    position: 'absolute',
     left: `${element.x || 0}px`,
     top: `${element.y || 0}px`,
     zIndex: isDragging || isSelected ? 100 : 1, // Ensure dragged/selected elements are on top
   };
 
-  // The main div gets the preview ref and styles for positioning and dragging opacity.
   return (
-    <div ref={preview} style={elementStyle}>
+    <div ref={preview} style={elementStyle} onClick={onSelect} className={isDragging ? '!cursor-grabbing' : 'cursor-grab'}>
       <Card
-        ref={cardRef} // Ref for the card itself, for resize logic and other DOM measurements
-        onClick={onSelect}
-        className={`h-full cursor-pointer transition-all duration-150 ease-in-out shadow-md hover:shadow-lg relative group w-full
+        ref={cardRef}
+        className={`h-full transition-all duration-150 ease-in-out shadow-md hover:shadow-lg relative group w-full 
           ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border'}
-          ${isDragging ? 'border-dashed border-primary !cursor-grabbing' : ''} 
+          ${isDragging ? 'border-dashed border-primary' : ''} 
         `}
       >
-        <CardHeader className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between ">
-          <div ref={drag} className="flex items-center gap-2 overflow-hidden cursor-move"> {/* Apply drag to this container including grip and title */}
+        <CardHeader 
+            className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between cursor-move"
+            ref={drag} // Apply drag to the CardHeader
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
             <GripVertical size={18} className="text-muted-foreground hover:text-foreground flex-shrink-0" />
             <CardTitle className="text-base font-medium text-foreground truncate" title={element.label}>
               {element.label || `${element.type.charAt(0).toUpperCase() + element.type.slice(1)} Field`}
@@ -242,7 +237,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
             onMouseDown={handleResizeMouseDown}
             className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full cursor-se-resize border-2 border-background shadow"
             title="Resize element"
-            style={{ zIndex: 10 }} // Ensure handle is clickable
+            style={{ zIndex: 101 }} // Ensure handle is above other elements but respects card content
           />
         )}
       </Card>
