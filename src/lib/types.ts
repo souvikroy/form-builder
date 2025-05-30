@@ -1,0 +1,132 @@
+
+export type ElementType =
+  | 'text'
+  | 'number'
+  | 'email'
+  | 'textarea'
+  | 'dropdown'
+  | 'radio'
+  | 'checkbox'
+  | 'date'
+  | 'file';
+
+export interface FormElementOption {
+  id: string;
+  value: string;
+  label: string;
+}
+
+export interface BaseFormElement {
+  id: string;
+  type: ElementType;
+  name: string;
+  label: string;
+  placeholder?: string;
+  defaultValue?: any;
+  required?: boolean;
+  helperText?: string;
+}
+
+export interface TextFormElement extends BaseFormElement {
+  type: 'text';
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+}
+
+export interface NumberFormElement extends BaseFormElement {
+  type: 'number';
+  min?: number;
+  max?: number;
+}
+
+export interface EmailFormElement extends BaseFormElement {
+  type: 'email';
+}
+
+export interface TextareaFormElement extends BaseFormElement {
+  type: 'textarea';
+  rows?: number;
+  minLength?: number;
+  maxLength?: number;
+}
+
+export interface OptionsFormElement extends BaseFormElement {
+  type: 'dropdown' | 'radio';
+  options: FormElementOption[];
+}
+
+export interface CheckboxFormElement extends BaseFormElement {
+  type: 'checkbox';
+  // If it's a group, options might be here. For a single checkbox, label is primary.
+  // Let's assume this is for a single checkbox for now.
+}
+
+export interface DateFormElement extends BaseFormElement {
+  type: 'date';
+}
+
+export interface FileFormElement extends BaseFormElement {
+  type: 'file';
+  accept?: string; // e.g., "image/*, .pdf"
+}
+
+export type FormElement =
+  | TextFormElement
+  | NumberFormElement
+  | EmailFormElement
+  | TextareaFormElement
+  | OptionsFormElement
+  | CheckboxFormElement
+  | DateFormElement
+  | FileFormElement;
+
+export type FormDefinition = FormElement[];
+
+// Helper to create a new form element with defaults
+export const createNewFormElement = (type: ElementType): FormElement => {
+  const id = crypto.randomUUID();
+  const baseElement: Omit<BaseFormElement, 'type'> = {
+    id,
+    name: `${type}_${id.substring(0, 4)}`,
+    label: `${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
+    required: false,
+  };
+
+  switch (type) {
+    case 'text':
+      return { ...baseElement, type, placeholder: 'Enter text' } as TextFormElement;
+    case 'number':
+      return { ...baseElement, type, placeholder: 'Enter a number' } as NumberFormElement;
+    case 'email':
+      return { ...baseElement, type, placeholder: 'Enter email address' } as EmailFormElement;
+    case 'textarea':
+      return { ...baseElement, type, placeholder: 'Enter long text', rows: 3 } as TextareaFormElement;
+    case 'dropdown':
+      return {
+        ...baseElement,
+        type,
+        options: [
+          { id: crypto.randomUUID(), label: 'Option 1', value: 'option1' },
+          { id: crypto.randomUUID(), label: 'Option 2', value: 'option2' },
+        ],
+      } as OptionsFormElement;
+    case 'radio':
+      return {
+        ...baseElement,
+        type,
+        options: [
+          { id: crypto.randomUUID(), label: 'Choice 1', value: 'choice1' },
+          { id: crypto.randomUUID(), label: 'Choice 2', value: 'choice2' },
+        ],
+      } as OptionsFormElement;
+    case 'checkbox':
+      return { ...baseElement, type, label: 'Agree to terms' } as CheckboxFormElement;
+    case 'date':
+      return { ...baseElement, type } as DateFormElement;
+    case 'file':
+      return { ...baseElement, type } as FileFormElement;
+    default:
+      throw new Error(`Unsupported element type: ${type}`);
+  }
+};
