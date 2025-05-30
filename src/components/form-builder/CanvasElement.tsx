@@ -38,45 +38,39 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
   const [initialWidth, setInitialWidth] = useState(0);
   const [initialMouseX, setInitialMouseX] = useState(0);
 
-  const [{ isDragging }, drag, preview] = useDrag({
-    type: ItemTypes.FORM_ELEMENT,
-    item: (): DragItem => ({ // This is called when drag starts
-      id: element.id,
-      type: ItemTypes.FORM_ELEMENT, // Explicitly set item type
-      originalX: element.x || 0, // Store initial canvas coordinates
-      originalY: element.y || 0,
+  const [{ isDragging }, drag, preview] = useDrag(
+    () => ({
+      type: ItemTypes.FORM_ELEMENT,
+      item: (): DragItem => ({ 
+        id: element.id,
+        type: ItemTypes.FORM_ELEMENT, 
+        originalX: element.x || 0, 
+        originalY: element.y || 0,
+      }),
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+      end: (item, monitor) => {
+        const delta = monitor.getDifferenceFromInitialOffset(); 
+        if (delta) {
+          const newX = Math.round(item.originalX + delta.x);
+          const newY = Math.round(item.originalY + delta.y);
+          updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
+        }
+      },
     }),
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-    end: (item, monitor) => {
-      const didDrop = monitor.didDrop();
-      // The dropResult helps identify if it was dropped on a specific target like the main canvas.
-      // However, for free-form dragging, we want the element to update its position based on where
-      // it was released, regardless of whether it was technically over the 'canvas' drop target
-      // or even outside the viewport briefly.
-      // The `(monitor.getDropResult() as any)?.droppedOn !== 'canvas'` check can be useful for
-      // specific behaviors (e.g. reverting if not on a valid zone), but for our current
-      // free-form placement, we proceed with the position update.
-      
-      const delta = monitor.getDifferenceFromInitialOffset(); // Delta in viewport coordinates
-      if (delta) {
-        const newX = Math.round(item.originalX + delta.x);
-        const newY = Math.round(item.originalY + delta.y);
-        // Update element's x,y in the context, ensuring non-negative values
-        updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
-      }
-    },
-  });
+    // Dependencies ensure the item factory and end function capture the latest element props and context functions
+    [element.id, element.x, element.y, updateElement] 
+  );
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent card selection when starting resize
+    e.stopPropagation(); 
     setIsResizing(true);
     const currentWidth = cardRef.current?.offsetWidth || parseInt(element.width || '280', 10);
     setInitialWidth(currentWidth);
     setInitialMouseX(e.clientX);
-    setSelectedElement(element); // Keep element selected during resize
+    setSelectedElement(element); 
   }, [element, setSelectedElement]);
 
   useEffect(() => {
@@ -85,7 +79,6 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
       const dx = e.clientX - initialMouseX;
       let newWidth = initialWidth + dx;
       newWidth = Math.max(MIN_WIDTH, newWidth);
-      // Update element width in context
       updateElement(element.id, { width: `${newWidth}px` });
     };
 
@@ -142,7 +135,6 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
         return (
           <div className="flex items-center mt-1 gap-2">
             <Checkbox id={element.id} defaultChecked={element.defaultValue} disabled />
-            {/* The label for checkbox is part of element.label, not a separate prop here typically */}
             <Label htmlFor={element.id} className="text-sm">{element.label}</Label>
           </div>
         );
@@ -179,7 +171,7 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
   };
 
   const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card selection
+    e.stopPropagation(); 
     removeElement(element.id);
     if (isSelected) {
       setSelectedElement(null);
@@ -187,13 +179,13 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
   };
   
   const elementStyle: React.CSSProperties = {
-    width: element.width || '280px', // Default width if not specified
+    width: element.width || '280px', 
     opacity: isDragging ? 0.4 : 1,
     minWidth: `${MIN_WIDTH}px`,
-    position: 'absolute', // Crucial for free-form placement
+    position: 'absolute', 
     left: `${element.x || 0}px`,
     top: `${element.y || 0}px`,
-    zIndex: isDragging || isSelected ? 100 : 1, // Ensure dragged/selected elements are on top
+    zIndex: isDragging || isSelected ? 100 : 1, 
   };
 
   return (
@@ -206,8 +198,8 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
         `}
       >
         <CardHeader 
-            className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between cursor-move"
             ref={drag} // Apply drag to the CardHeader
+            className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between cursor-move"
         >
           <div className="flex items-center gap-2 overflow-hidden">
             <GripVertical size={18} className="text-muted-foreground hover:text-foreground flex-shrink-0" />
@@ -237,11 +229,10 @@ export default function CanvasElement({ element, isSelected, onSelect }: CanvasE
             onMouseDown={handleResizeMouseDown}
             className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full cursor-se-resize border-2 border-background shadow"
             title="Resize element"
-            style={{ zIndex: 101 }} // Ensure handle is above other elements but respects card content
+            style={{ zIndex: 101 }} 
           />
         )}
       </Card>
     </div>
   );
 }
-

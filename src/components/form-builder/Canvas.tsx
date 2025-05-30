@@ -30,17 +30,12 @@ export default function Canvas() {
         // This handles dropping NEW elements from the sidebar onto the canvas
         if (!item.id && clientOffset && dropZoneRef.current) { 
           const canvasContentRect = dropZoneRef.current.getBoundingClientRect(); // Rect of the large content div relative to viewport
-          const scrollingViewport = dropZoneRef.current.parentElement; // This should be the ScrollAreaViewport
+          const scrollingViewport = dropZoneRef.current.parentElement?.parentElement; // This should be the ScrollArea's Viewport element
 
           if (scrollingViewport) {
             const scrollLeft = scrollingViewport.scrollLeft;
             const scrollTop = scrollingViewport.scrollTop;
-
-            // Position of mouse *within the visible part of the content div*:
-            // mouseXInContentVisible = clientOffset.x - canvasContentRect.left
-            // mouseYInContentVisible = clientOffset.y - canvasContentRect.top
-            //
-            // Add scroll to get position *within the total scrollable content*:
+            
             let x = clientOffset.x - canvasContentRect.left + scrollLeft;
             let y = clientOffset.y - canvasContentRect.top + scrollTop;
             
@@ -103,4 +98,3 @@ export default function Canvas() {
     </ScrollArea>
   );
 }
-
