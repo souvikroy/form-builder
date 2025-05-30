@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import type { XYCoord } from 'dnd-core';
 import { useDrag, useDrop } from 'react-dnd';
-import type { FormElement, TableFormElement as TableFormElementType } from '@/lib/types'; // Added TableFormElementType
+import type { FormElement, TableFormElement as TableFormElementType } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GripVertical, Trash2 } from 'lucide-react';
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 // import { Calendar } from '@/components/ui/calendar'; // Not directly used for preview here
 import { useFormBuilder } from '@/contexts/FormBuilderContext';
-import { ItemTypes } from './DraggableItem'; 
+import { ItemTypes } from './DraggableItem';
 
 interface CanvasElementProps {
   element: FormElement;
@@ -27,7 +27,7 @@ interface CanvasElementProps {
 interface DragItem {
   index: number;
   id: string;
-  type: string; 
+  type: string;
 }
 
 export default function CanvasElement({ element, index, isSelected, onSelect, moveElement }: CanvasElementProps) {
@@ -35,7 +35,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: any }>({
-    accept: ItemTypes.FORM_ELEMENT, 
+    accept: ItemTypes.FORM_ELEMENT,
     collect(monitor) {
       return {
         handlerId: monitor.getHandlerId(),
@@ -45,8 +45,8 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
       if (!ref.current) {
         return;
       }
-      if (item.index === undefined) return; 
-      
+      if (item.index === undefined) return;
+
       const dragIndex = item.index;
       const hoverIndex = index;
 
@@ -55,30 +55,34 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
       }
 
       const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
-      const hoverClientY = (clientOffset as XYCoord).y - hoverBoundingRect.top;
+      if(!clientOffset || !hoverBoundingRect) return;
 
+      const hoverClientY = (clientOffset as XYCoord).y - hoverBoundingRect.top;
+      const hoverMiddleY = hoverBoundingRect.height / 2;
+
+      // Dragging downwards
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
         return;
       }
+      // Dragging upwards
       if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
         return;
       }
       moveElement(dragIndex, hoverIndex);
-      item.index = hoverIndex; 
+      item.index = hoverIndex;
     },
   });
 
   const [{ isDragging }, drag, preview] = useDrag({
-    type: ItemTypes.FORM_ELEMENT, 
-    item: () => ({ id: element.id, index, type: ItemTypes.FORM_ELEMENT }), 
+    type: ItemTypes.FORM_ELEMENT,
+    item: () => ({ id: element.id, index, type: ItemTypes.FORM_ELEMENT }),
     collect: (monitor: any) => ({
       isDragging: monitor.isDragging(),
     }),
   });
 
-  drag(drop(ref)); 
+  drag(drop(ref));
 
   const renderElementPreview = () => {
     switch (element.type) {
@@ -116,14 +120,14 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
         return (
           <div className="flex items-center mt-1 gap-2">
             <Checkbox id={element.id} defaultChecked={element.defaultValue} disabled />
-            <Label htmlFor={element.id} className="text-sm">{element.label}</Label> 
+            <Label htmlFor={element.id} className="text-sm">{element.label}</Label>
           </div>
         );
       case 'date':
         return <Input type="date" defaultValue={element.defaultValue} readOnly className="mt-1 bg-muted/30" />;
       case 'file':
         return <Input type="file" disabled className="mt-1 bg-muted/30" />;
-      case 'table': // Added table preview
+      case 'table':
         const tableEl = element as TableFormElementType;
         const previewRows = Math.min(tableEl.rows, 3);
         const previewCols = Math.min(tableEl.cols, 3);
@@ -152,7 +156,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
   };
 
   const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     removeElement(element.id);
     if (isSelected) {
       setSelectedElement(null);
@@ -160,18 +164,19 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
   };
 
   return (
-    <div ref={preview} style={{ opacity: isDragging ? 0.5 : 1 }} data-handler-id={handlerId}>
+    // Added w-full to the preview div so Card can fill it, respecting max-width from parent
+    <div ref={preview} style={{ opacity: isDragging ? 0.5 : 1 }} data-handler-id={handlerId} className="w-full">
       <Card
         ref={ref}
         onClick={onSelect}
-        className={`cursor-pointer transition-all duration-150 ease-in-out shadow-md hover:shadow-lg relative group
+        className={`cursor-pointer transition-all duration-150 ease-in-out shadow-md hover:shadow-lg relative group w-full
           ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border'}
           ${isDragging ? 'border-dashed border-primary' : ''}
         `}
       >
         <CardHeader className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between ">
-          <div className="flex items-center gap-2">
-            <div ref={drag} className="cursor-move p-1 -ml-1 text-muted-foreground hover:text-foreground" aria-label="Drag to reorder">
+          <div className="flex items-center gap-2 overflow-hidden"> {/* Added overflow-hidden for long titles */}
+            <div ref={drag} className="cursor-move p-1 -ml-1 text-muted-foreground hover:text-foreground flex-shrink-0" aria-label="Drag to reorder">
               <GripVertical size={18} />
             </div>
             <CardTitle className="text-base font-medium text-foreground truncate" title={element.label}>
@@ -181,7 +186,7 @@ export default function CanvasElement({ element, index, isSelected, onSelect, mo
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
             onClick={handleRemove}
             aria-label="Remove element"
           >

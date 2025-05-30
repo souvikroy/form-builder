@@ -49,16 +49,18 @@ export default function Canvas() {
             <p className="text-sm">Build your form by adding elements from the left panel.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-wrap gap-4"> {/* Changed to flex-wrap layout */}
             {formDefinition.map((element, index) => (
-              <CanvasElement
-                key={element.id}
-                element={element}
-                index={index}
-                isSelected={selectedElement?.id === element.id}
-                onSelect={() => handleSelectElement(element)}
-                moveElement={moveElement}
-              />
+              // Added a wrapper for each element to control its width and allow wrapping
+              <div key={element.id} className="w-full max-w-xs"> {/* Or e.g. basis-80, max-w-sm */}
+                <CanvasElement
+                  element={element}
+                  index={index}
+                  isSelected={selectedElement?.id === element.id}
+                  onSelect={() => handleSelectElement(element)}
+                  moveElement={moveElement}
+                />
+              </div>
             ))}
           </div>
         )}
