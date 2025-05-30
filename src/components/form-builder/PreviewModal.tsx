@@ -2,7 +2,7 @@
 "use client";
 import React from 'react';
 import { useFormBuilder } from '@/contexts/FormBuilderContext';
-import type { FormElement as FormElementType, OptionsFormElement, TextareaFormElement, FileFormElement, TableFormElement as TableFormElementType } from '@/lib/types'; // Added TableFormElementType
+import type { FormElement as FormElementType, OptionsFormElement, TextareaFormElement, FileFormElement, TableFormElement as TableFormElementType } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,13 +11,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from '@/components/ui/checkbox';
-// import { Calendar } from '@/components/ui/calendar'; // Calendar component not directly used here, Popover used instead
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIconLucide } from "lucide-react" // Renamed to avoid conflict with ShadCN Calendar
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import { Calendar } from '@/components/ui/calendar'; // ShadCN Calendar
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -36,8 +35,16 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
       defaultValue: element.defaultValue,
     };
 
+    const elementStyle: React.CSSProperties = {
+      position: 'absolute',
+      left: `${element.x || 0}px`,
+      top: `${element.y || 0}px`,
+      width: element.width || '280px', // Default width if not specified
+      // minWidth: '150px', // Ensure elements don't become too small visually
+    };
+
     return (
-      <div key={element.id} className="mb-6 p-4 border border-border rounded-lg shadow-sm bg-background">
+      <div key={element.id} style={elementStyle} className="p-3 border border-border rounded-lg shadow-sm bg-card">
         <Label htmlFor={element.id} className="block text-md font-medium mb-1.5 text-foreground">
           {element.label}
           {element.required && <span className="text-destructive ml-1">*</span>}
@@ -83,6 +90,7 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
               return (
                 <div className="flex items-center space-x-2 mt-2">
                   <Checkbox id={element.id} name={element.name} defaultChecked={!!element.defaultValue} required={element.required} />
+                  {/* The label for checkbox in preview should be the element's main label */}
                   <Label htmlFor={element.id} className="font-normal">{element.label}</Label> 
                 </div>
               );
@@ -92,12 +100,13 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
+                      id={element.id} // Ensure ID is on the button for the label to target
                       className={cn(
                         "w-full justify-start text-left font-normal bg-input",
                         !dateValues[element.id] && "text-muted-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIconLucide className="mr-2 h-4 w-4" />
                       {dateValues[element.id] ? format(dateValues[element.id]!, "PPP") : <span>{element.placeholder || "Pick a date"}</span>}
                     </Button>
                   </PopoverTrigger>
@@ -114,21 +123,16 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
             case 'file':
               const fileEl = element as FileFormElement;
               return <Input type="file" accept={fileEl.accept} {...commonProps} className="bg-input" />;
-            case 'table': // Added table rendering for preview
+            case 'table':
               const tableEl = element as TableFormElementType;
               return (
                 <div className="overflow-x-auto mt-2">
                   <table className="w-full border-collapse border border-border text-sm">
-                    {/* Optional: Add a caption or header row if needed based on table properties */}
-                    {/* <caption className="text-sm text-muted-foreground mb-1 text-left p-1">
-                      {tableEl.label} ({tableEl.rows} rows, {tableEl.cols} columns)
-                    </caption> */}
                     <tbody>
                       {Array.from({ length: tableEl.rows }).map((_, rIndex) => (
                         <tr key={rIndex} className="border-b border-border">
                           {Array.from({ length: tableEl.cols }).map((_, cIndex) => (
                             <td key={cIndex} className={`border-border p-2 h-10 bg-input/20 text-center text-muted-foreground ${cIndex < tableEl.cols -1 ? 'border-r' : ''}`}>
-                              {/* Placeholder for cell content. For a real form, cells might be inputs. */}
                               {/* Cell {rIndex + 1}-{cIndex + 1} */}
                             </td>
                           ))}
@@ -175,17 +179,29 @@ export default function PreviewModal({ isOpen, onClose }: PreviewModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px] h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">Form Preview</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 -mx-6 px-6 py-4">
+        <ScrollArea className="flex-1 -mx-6 px-6 py-4 bg-muted/10"> {/* Added bg for contrast */}
           {formDefinition.length === 0 ? (
-            <p className="text-muted-foreground text-center py-10">The form is empty. Add some elements to preview.</p>
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground text-center py-10">The form is empty. Add some elements to preview.</p>
+            </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-0">
-              {formDefinition.map(renderFormElement)}
-              <div className="mt-8 pt-6 border-t border-border">
+            <form onSubmit={handleSubmit}>
+              {/* Relative container for absolutely positioned elements, mimicking canvas */}
+              <div 
+                className="relative bg-background shadow-inner" 
+                style={{ 
+                  minWidth: '2500px', // Match canvas min-width
+                  minHeight: '1800px', // Match canvas min-height
+                  padding: '32px',      // Match canvas padding
+                }}
+              >
+                {formDefinition.map(renderFormElement)}
+              </div>
+              <div className="mt-8 pt-6 border-t border-border px-6 pb-6 sticky bottom-0 bg-background"> {/* Submit button area */}
                 <Button type="submit" className="w-full sm:w-auto" variant="default">Submit Preview</Button>
               </div>
             </form>
