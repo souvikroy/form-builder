@@ -83,7 +83,7 @@ export default function Toolbar() {
       <header className="h-16 px-6 flex items-center justify-between border-b border-border bg-card shadow-sm">
         <div className="flex items-center gap-2">
           <Workflow className="h-7 w-7 text-primary" />
-          <h1 className="text-xl font-semibold text-foreground">Formulate</h1>
+          <h1 className="text-xl font-semibold text-foreground">AUTOMIZ Form</h1>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => setIsSaveTemplateOpen(true)}>
