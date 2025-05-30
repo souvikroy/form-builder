@@ -3,9 +3,9 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
 import type { FormElement, TableFormElement as TableFormElementType } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card'; // Removed CardHeader, CardTitle
+// import { Button } from '@/components/ui/button'; // Button no longer needed here
+// import { GripVertical, Trash2 } from 'lucide-react'; // Icons no longer needed here
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,15 +23,15 @@ interface CanvasElementProps {
 
 interface DragItem {
   id: string;
-  type: string; 
+  type: string;
   originalX: number;
   originalY: number;
 }
 
-const MIN_WIDTH = 100; 
+const MIN_WIDTH = 100;
 
 export default function CanvasElement({ element, isSelected, onSelect, gridSnapSize }: CanvasElementProps) {
-  const { removeElement, setSelectedElement, updateElement } = useFormBuilder();
+  const { updateElement, setSelectedElement } = useFormBuilder(); // removeElement removed as button is gone
   const cardRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
@@ -42,17 +42,17 @@ export default function CanvasElement({ element, isSelected, onSelect, gridSnapS
   const [{ isDragging }, drag, preview] = useDrag(
     () => ({
       type: ItemTypes.FORM_ELEMENT,
-      item: (): DragItem => ({ 
+      item: (): DragItem => ({
         id: element.id,
-        type: ItemTypes.FORM_ELEMENT, 
-        originalX: element.x || 0, 
+        type: ItemTypes.FORM_ELEMENT,
+        originalX: element.x || 0,
         originalY: element.y || 0,
       }),
       collect: (monitor) => ({
         isDragging: monitor.isDragging(),
       }),
       end: (item, monitor) => {
-        const delta = monitor.getDifferenceFromInitialOffset(); 
+        const delta = monitor.getDifferenceFromInitialOffset();
         if (delta) {
           let newX = Math.round(item.originalX + delta.x);
           let newY = Math.round(item.originalY + delta.y);
@@ -60,22 +60,22 @@ export default function CanvasElement({ element, isSelected, onSelect, gridSnapS
           // Snap to grid
           newX = Math.round(newX / gridSnapSize) * gridSnapSize;
           newY = Math.round(newY / gridSnapSize) * gridSnapSize;
-          
+
           updateElement(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
         }
       },
     }),
-    [element.id, element.x, element.y, updateElement, gridSnapSize] 
+    [element.id, element.x, element.y, updateElement, gridSnapSize]
   );
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.stopPropagation(); 
+    e.stopPropagation();
     setIsResizing(true);
     const currentWidth = cardRef.current?.offsetWidth || parseInt(element.width || '280', 10);
     setInitialWidth(currentWidth);
     setInitialMouseX(e.clientX);
-    setSelectedElement(element); 
+    setSelectedElement(element);
   }, [element, setSelectedElement]);
 
   useEffect(() => {
@@ -179,57 +179,46 @@ export default function CanvasElement({ element, isSelected, onSelect, gridSnapS
     }
   };
 
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation(); 
-    removeElement(element.id);
-    if (isSelected) {
-      setSelectedElement(null);
-    }
-  };
-  
+  // Remove button is removed, so handleRemove function is no longer needed here.
+  // const handleRemove = (e: React.MouseEvent) => { ... };
+
   const elementStyle: React.CSSProperties = {
-    width: element.width || '280px', 
+    width: element.width || '280px',
     opacity: isDragging ? 0.4 : 1,
     minWidth: `${MIN_WIDTH}px`,
-    position: 'absolute', 
+    position: 'absolute',
     left: `${element.x || 0}px`,
     top: `${element.y || 0}px`,
-    zIndex: isDragging || isSelected ? 100 : 1, 
+    zIndex: isDragging || isSelected ? 100 : 1,
+  };
+
+  // The entire element is now draggable. Assign `drag` ref to the root div.
+  // Also, assign `preview` to the root div, as `CardHeader` is gone.
+  const combinedRef = (node: HTMLDivElement | null) => {
+    drag(node);
+    preview(node);
+    (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node; // Keep cardRef for resizing
   };
 
   return (
-    <div ref={preview} style={elementStyle} onClick={onSelect} className={isDragging ? '!cursor-grabbing' : 'cursor-grab'}>
+    <div 
+        ref={combinedRef} 
+        style={elementStyle} 
+        onClick={onSelect} 
+        className={`${isDragging ? 'cursor-grabbing' : 'cursor-grab'} relative group`} // Added relative and group for resize handle
+    >
       <Card
-        ref={cardRef}
-        className={`h-full transition-all duration-150 ease-in-out shadow-md hover:shadow-lg relative group w-full 
+        className={`h-full transition-all duration-150 ease-in-out shadow-md hover:shadow-lg w-full 
           ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border'}
-          ${isDragging ? 'border-dashed border-primary' : ''} 
+          ${isDragging ? 'border-dashed border-primary' : ''}
         `}
       >
-        <CardHeader 
-            ref={drag} 
-            className="py-3 px-4 bg-muted/50 rounded-t-lg flex flex-row items-center justify-between cursor-move"
-        >
-          <div className="flex items-center gap-2 overflow-hidden">
-            <GripVertical size={18} className="text-muted-foreground hover:text-foreground flex-shrink-0" />
-            <CardTitle className="text-base font-medium text-foreground truncate" title={element.label}>
-              {element.label || `${element.type.charAt(0).toUpperCase() + element.type.slice(1)} Field`}
-            </CardTitle>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
-            onClick={handleRemove}
-            aria-label="Remove element"
-          >
-            <Trash2 size={16} />
-          </Button>
-        </CardHeader>
+        {/* CardHeader removed */}
         <CardContent className="p-4">
-          {(element.type !== 'checkbox' && element.type !== 'table') && element.placeholder && (
-             <p className="text-xs text-muted-foreground mb-1">Placeholder: {element.placeholder}</p>
-          )}
+          {/* Explicit placeholder preview text removed */}
+          <p className="text-sm font-medium text-foreground mb-1 truncate" title={element.label}>
+            {element.label || `${element.type.charAt(0).toUpperCase() + element.type.slice(1)} Field`}
+          </p>
           {renderElementPreview()}
         </CardContent>
          {isSelected && (
@@ -238,7 +227,7 @@ export default function CanvasElement({ element, isSelected, onSelect, gridSnapS
             onMouseDown={handleResizeMouseDown}
             className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full cursor-se-resize border-2 border-background shadow"
             title="Resize element"
-            style={{ zIndex: 101 }} 
+            style={{ zIndex: 101 }}
           />
         )}
       </Card>
