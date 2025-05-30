@@ -8,9 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { CardHeader, CardTitle } from '@/components/ui/card'; // Removed Card, CardContent
 import { Separator } from '@/components/ui/separator';
-import type { FormElement, FormElementOption, OptionsFormElement, TableFormElement as TableFormElementType } from '@/lib/types'; // Added TableFormElementType
+import type { FormElement, FormElementOption, OptionsFormElement, TableFormElement as TableFormElementType } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 export default function PropertyEditor() {
@@ -33,8 +33,8 @@ export default function PropertyEditor() {
     if (type === 'checkbox') {
       processedValue = (e.target as HTMLInputElement).checked;
     } else if (type === 'number') {
-      processedValue = value === '' ? undefined : parseInt(value, 10); // Use parseInt for integer values like rows/cols
-      if (isNaN(processedValue)) processedValue = undefined; // Ensure NaN becomes undefined
+      processedValue = value === '' ? undefined : parseInt(value, 10);
+      if (isNaN(processedValue)) processedValue = undefined;
     }
     
     setFormData(prev => ({ ...prev, [name]: processedValue }));
@@ -59,11 +59,9 @@ export default function PropertyEditor() {
 
   if (!selectedElement || !formData) {
     return (
-      <aside className="w-80 border-l border-border bg-card p-6 shadow-md flex flex-col items-center justify-center">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium">Properties</p>
-          <p className="text-sm">Select an element on the canvas to edit its properties.</p>
-        </div>
+      <aside className="w-full h-full bg-card p-6 shadow-md flex flex-col items-center justify-center text-center text-muted-foreground">
+        <p className="text-lg font-medium">Properties</p>
+        <p className="text-sm">Select an element on the canvas to edit its properties.</p>
       </aside>
     );
   }
@@ -144,7 +142,7 @@ export default function PropertyEditor() {
           <div className="space-y-3">
             <Label>Options</Label>
             {optionsElement.options?.map((opt, index) => (
-              <Card key={opt.id} className="p-3 bg-muted/30">
+              <div key={opt.id} className="p-3 bg-muted/30 rounded-md border border-border"> {/* Replaced Card with div */}
                 <div className="space-y-2">
                    <div className="flex items-center justify-between">
                      <p className="text-sm font-medium text-foreground">Option {index + 1}</p>
@@ -161,7 +159,7 @@ export default function PropertyEditor() {
                     <Input id={`option-value-${opt.id}`} value={opt.value} onChange={(e) => handleOptionChange(opt.id, 'value', e.target.value)} />
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
             <Button variant="outline" size="sm" onClick={handleAddOption} className="w-full">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Option
@@ -176,7 +174,7 @@ export default function PropertyEditor() {
             <p className="text-xs text-muted-foreground">Comma-separated (e.g. image/*, .pdf)</p>
           </div>
         );
-      case 'table': // Added properties for Table element
+      case 'table':
         const tableFormData = formData as Partial<TableFormElementType>;
         return (
           <>
@@ -196,17 +194,17 @@ export default function PropertyEditor() {
   };
 
   return (
-    <aside className="w-80 border-l border-border bg-card shadow-md">
+    <aside className="w-full h-full bg-card shadow-md flex flex-col overflow-hidden">
       <CardHeader className="py-4 px-6">
         <CardTitle className="text-lg font-semibold text-foreground">Properties: {selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)}</CardTitle>
       </CardHeader>
       <Separator />
-      <ScrollArea className="h-[calc(100vh-8rem)]"> 
-        <CardContent className="p-6 space-y-4">
+      <ScrollArea className="flex-1"> 
+        <div className="p-6 space-y-4">
           {renderCommonProperties()}
           <Separator className="my-4" />
           {renderSpecificProperties()}
-        </CardContent>
+        </div>
       </ScrollArea>
     </aside>
   );

@@ -16,11 +16,13 @@ export default function FormBuilderPage() {
       <FormBuilderProvider>
         <div className="flex flex-col h-screen bg-background text-foreground">
           <Toolbar />
-          <div className="flex flex-1 overflow-hidden border-t border-border">
+          <div className="flex flex-1 overflow-hidden border-t border-border"> {/* Top section: Sidebar and Canvas */}
             <ElementSidebar />
-            <main className="flex-1 overflow-y-auto p-0"> {/* Changed p-6 to p-0 */}
+            <main className="flex-1 overflow-y-auto p-0"> 
               <Canvas />
             </main>
+          </div>
+          <div className="border-t border-border h-72"> {/* Bottom section: Property Editor */}
             <PropertyEditor />
           </div>
         </div>
